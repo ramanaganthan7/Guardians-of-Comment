@@ -1,0 +1,15 @@
+/* CSS */
+.container_auth {
+  display: flex;
+  min-height: 100vh;
+  flex-direction: column;
+  margin-left: 0;
+  margin-right: 0;
+  min-width: 100vw;
+}
+
+@media (min-width: 768px) {
+  .container_auth {
+    flex-direction: row;
+  }
+}
