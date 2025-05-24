@@ -10,6 +10,7 @@ export async function executeQuery(sql) {
     console.error('Error:', error.message)
   }
 }
+
 export async function executeReadQuery(sql) {
   try {
     const result = await prisma.$queryRawUnsafe(sql)
