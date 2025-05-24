@@ -1,11 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { use, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Check, Zap, Crown, Star } from "lucide-react"
 import "../styles/subscribe.css"
+import { useNavigate } from 'react-router-dom';
 
 export default function Subscription() {
 
@@ -72,6 +73,43 @@ export default function Subscription() {
       buttonVariant: "outline" ,
     },
   ]
+  const userId = localStorage.getItem("userId");
+  console.log(userId,'user id sub');
+  const  navigate = useNavigate();
+  const handleSubscribe = async (plan) => {
+  try {
+   // const userId = localStorage.getItem("user_id"); // Or get it from context/state
+  //  if (!userId) return alert("User not logged in");
+
+    const res = await fetch("http://localhost:3000/subscription", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        id: userId,
+        plan: plan.name,
+        amount: plan.price.replace("$", "").replace("Free", "0"),
+      }),
+    });
+
+    const result = await res.json();
+
+    if (res.ok) {
+      alert("Subscription successful!");
+      localStorage.setItem("plane", plan.name);
+
+      navigate('/Core');
+
+    } else {
+      alert(result.message || "Subscription failed");
+    }
+  } catch (error) {
+    console.error("Subscription error:", error);
+    alert("Something went wrong");
+  }
+};
+
 
   return (
     <div className="sub_con">
@@ -170,6 +208,8 @@ export default function Subscription() {
                       plan.popular ? "bg-primary hover:bg-primary/90 text-white shadow-lg hover:shadow-xl" : ""
                     } ${isHovered ? "scale-105" : ""}`}
                     size="lg"
+                      onClick={() => handleSubscribe(plan)}
+
                   >
                     {plan.buttonText}
                   </Button>

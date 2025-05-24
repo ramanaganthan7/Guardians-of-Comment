@@ -1,28 +1,19 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Eye, EyeOff, Copy, Trash2, Plus, Crown } from "lucide-react"
 import "../styles/core.css"
+
 const Core = () => {
   const [activeTab, setActiveTab] = useState("Generate key")
   const [apiKeys, setApiKeys] = useState({
-    analyzeHarmfulness: [
-      {
-        id: 1,
-        key: "goc_1234567890abcdef1234567890abcdef",
-        isVisible: false,
-        createdAt: new Date().toISOString(),
-      },
-    ],
-    analyzeHarmfulnessWithPhoneCheck: [
-      {
-        id: 2,
-        key: "goc_abcdef1234567890abcdef1234567890",
-        isVisible: false,
-        createdAt: new Date().toISOString(),
-      },
-    ],
+    analyzeHarmfulness: [],
+    analyzeHarmfulnessWithPhoneCheck: [],
   })
+
+  const userId = localStorage.getItem("userId")
+  const userName = localStorage.getItem("userName")
+  const plane = localStorage.getItem("plane")
 
   const menuItems = ["API Documentation", "Generate key", "Dashboard", "Billing"]
 
@@ -39,30 +30,63 @@ const Core = () => {
     },
   ]
 
-  const generateNewKey = (apiType) => {
-    const newKey = {
-      id: Date.now(),
-      key: `goc_${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`,
-      isVisible: false,
-      createdAt: new Date().toISOString(),
-    }
+ // Fetch keys from backend
+const fetchKeys = async () => {
+  try {
+    const res = await fetch(`/api/get-keys?userId=${userId}`);
+    if (!res.ok) throw new Error("Failed to fetch API keys");
+    const data = await res.json();
+    setApiKeys(data);
+  } catch (err) {
+    console.error("Error fetching API keys:", err);
+  }
+};
+
+useEffect(() => {
+  if (userId) {
+    fetchKeys();
+  }
+}, [userId]);
+
+// Send key request to backend
+const generateNewKey = async (apiType) => {
+  try {
+    const res = await fetch("/api/generate-key", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        userId,
+        apiType,
+        level: plane,
+      }),
+    });
+
+    if (!res.ok) throw new Error("Failed to generate API key");
+
+    const newKey = await res.json();
+    newKey.isVisible = false;
 
     setApiKeys((prev) => ({
       ...prev,
       [apiType]: [...(prev[apiType] || []), newKey],
-    }))
+    }));
+  } catch (err) {
+    console.error("Error generating API key:", err);
   }
-
+};
   const toggleKeyVisibility = (apiType, id) => {
     setApiKeys((prev) => ({
       ...prev,
-      [apiType]: prev[apiType].map((key) => (key.id === id ? { ...key, isVisible: !key.isVisible } : key)),
+      [apiType]: prev[apiType].map((key) =>
+        key.id === id ? { ...key, isVisible: !key.isVisible } : key
+      ),
     }))
   }
 
   const copyToClipboard = (key) => {
     navigator.clipboard.writeText(key)
-    // You could add a toast notification here bg-white border border-gray-200 rounded-lg p-6 shadow-sm
   }
 
   const deleteKey = (apiType, id) => {
@@ -70,6 +94,7 @@ const Core = () => {
       ...prev,
       [apiType]: prev[apiType].filter((key) => key.id !== id),
     }))
+    // Optionally send delete request to backend here
   }
 
   const renderApiSection = (apiType) => {
@@ -157,7 +182,6 @@ const Core = () => {
             <div className="space-y-6">{apiTypes.map((apiType) => renderApiSection(apiType))}</div>
           </div>
         )
-
       case "API Documentation":
         return (
           <div className="space-y-6">
@@ -167,7 +191,6 @@ const Core = () => {
             </div>
           </div>
         )
-
       case "Dashboard":
         return (
           <div className="space-y-6">
@@ -177,7 +200,6 @@ const Core = () => {
             </div>
           </div>
         )
-
       case "Billing":
         return (
           <div className="space-y-6">
@@ -187,7 +209,6 @@ const Core = () => {
             </div>
           </div>
         )
-
       default:
         return null
     }
@@ -195,17 +216,14 @@ const Core = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Top Navigation Bar */}
       <header className="bg-white border-b border-gray-200 px-6 py-4">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-bold text-gray-900">GUARDIANS OF COMMENTS</h1>
-
           <div className="flex items-center gap-4">
             <div className="text-right">
-              <div className="text-sm font-medium text-gray-900">Name</div>
-              <div className="text-xs text-gray-500">Plan</div>
+              <div className="text-sm font-medium text-gray-900">{userName}</div>
+              <div className="text-xs text-gray-500">{plane}</div>
             </div>
-
             <button className="p-2 text-orange-500 hover:text-orange-600 hover:bg-orange-50 rounded-full transition-colors">
               <Crown size={24} />
             </button>
@@ -214,7 +232,6 @@ const Core = () => {
       </header>
 
       <div className="flex">
-        {/* Sidebar */}
         <aside className="w-64 bg-white border-r border-gray-200 min-h-[calc(100vh-73px)]">
           <nav className="p-4">
             <ul className="space-y-1">
@@ -236,7 +253,6 @@ const Core = () => {
           </nav>
         </aside>
 
-        {/* Main Content flex-1 p-6 w-full h-full box-border */}
         <main className="main_content_core">{renderContent()}</main>
       </div>
     </div>
