@@ -29,3 +29,17 @@ model user_details {
   email    String @unique
   password String
 }
+
+model subscription {
+  id     Int    @id              // Manually provided
+  plan   String
+  amount Int
+}
+
+model api_manage {
+  id        Int      @id              // Manually provided
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  apiKey    String   @unique
+  apiLevel  String
+}
