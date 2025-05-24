@@ -1,0 +1,15 @@
+/* CSS */
+.sub_con {
+  display: flex;
+  flex-direction: column;
+  margin-left: 0;
+  margin-right: 0;
+  min-width: 100vw;
+  max-height: 100vh;
+}
+
+@media (min-width: 768px) {
+  .csub_con {
+    flex-direction: row;
+  }
+}
