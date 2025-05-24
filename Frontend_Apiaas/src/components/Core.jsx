@@ -1,15 +1,20 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { Eye, EyeOff, Copy, Trash2, Plus, Crown } from "lucide-react"
+import { useState, useEffect, useRef} from "react"
+import { Eye, EyeOff, Copy, Trash2, Plus, Crown, X } from "lucide-react"
 import "../styles/core.css"
 
 const Core = () => {
   const [activeTab, setActiveTab] = useState("Generate key")
-  const [apiKeys, setApiKeys] = useState({
+
+  // Initialize apiKeys as object with keys for each API type
+  const initialApiKeys = {
     analyzeHarmfulness: [],
     analyzeHarmfulnessWithPhoneCheck: [],
-  })
+  }
+  const [apiKeys, setApiKeys] = useState(initialApiKeys)
+
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false)
 
   const userId = localStorage.getItem("userId")
   const userName = localStorage.getItem("userName")
@@ -30,83 +35,131 @@ const Core = () => {
     },
   ]
 
- // Fetch keys from backend
-const fetchKeys = async () => {
+  const fetchKeys = async () => {
   try {
-    const res = await fetch(`/api/get-keys?userId=${userId}`);
-    if (!res.ok) throw new Error("Failed to fetch API keys");
-    const data = await res.json();
-    setApiKeys(data);
+    const res = await fetch(`http://localhost:3000/get-api-key?id=${userId}&apiLevel=basic`)
+    if (!res.ok) throw new Error("Failed to fetch API keys")
+
+    const result = await res.json()
+    console.log(result, "result")
+
+    const groupedKeys = initialApiKeys
+
+    ;(result.data || []).forEach((key) => {
+      const apiTypeName = key.apiType || "analyzeHarmfulness"
+
+      if (!groupedKeys[apiTypeName]) groupedKeys[apiTypeName] = []
+
+      groupedKeys[apiTypeName].push({
+        id: key.id,
+        key: key.apiKey,
+        plan: key.apiLevel,
+        isVisible: false,
+        createdAt: key.createdAt || new Date().toISOString(),
+      })
+    })
+
+    setApiKeys(groupedKeys)
+    console.log(groupedKeys, "Formatted API Keys")
   } catch (err) {
-    console.error("Error fetching API keys:", err);
+    console.error("Error fetching API keys:", err)
   }
-};
+}
 
-useEffect(() => {
-  if (userId) {
-    fetchKeys();
+// Prevent double execution using useRef
+const useFetchKeysOnce = (userId, initialApiKeys, setApiKeys) => {
+  const fetched = useRef(false)
+
+  useEffect(() => {
+    if (!fetched.current) {
+      fetchKeys()
+      fetched.current = true
+    }
+  }, [])
+}
+
+  useEffect(() => {
+    if (userId) fetchKeys()
+  }, [userId])
+
+  const generateNewKey = async (apiType) => {
+    if (apiType === "analyzeHarmfulnessWithPhoneCheck") {
+      setShowUpgradeModal(true)
+      return
+    }
+
+    if ((apiKeys[apiType] || []).length >= 1) return
+
+    try {
+      const res = await fetch("http://localhost:3000/generate-api-key", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: userId, apiLevel: "basic", apiType }),
+      })
+
+      if (!res.ok) throw new Error("Failed to generate API key")
+
+      const response = await res.json()
+      const newKey = { ...response.data, isVisible: false }
+
+      setApiKeys((prev) => ({
+        ...prev,
+        [apiType]: [...(prev[apiType] || []), newKey],
+      }))
+      window.location.reload();
+
+    } catch (err) {
+      console.error("Error generating API key:", err)
+    }
   }
-}, [userId]);
 
-// Send key request to backend
-const generateNewKey = async (apiType) => {
-  try {
-    const res = await fetch("/api/generate-key", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        userId,
-        apiType,
-        level: plane,
-      }),
-    });
-
-    if (!res.ok) throw new Error("Failed to generate API key");
-
-    const newKey = await res.json();
-    newKey.isVisible = false;
-
-    setApiKeys((prev) => ({
-      ...prev,
-      [apiType]: [...(prev[apiType] || []), newKey],
-    }));
-  } catch (err) {
-    console.error("Error generating API key:", err);
-  }
-};
-  const toggleKeyVisibility = (apiType, id) => {
-    setApiKeys((prev) => ({
-      ...prev,
-      [apiType]: prev[apiType].map((key) =>
-        key.id === id ? { ...key, isVisible: !key.isVisible } : key
-      ),
-    }))
+  // Toggle visibility of a specific key
+  const toggleKeyVisibility = (apiType, keyId) => {
+    setApiKeys((prev) => {
+      const updatedKeys = prev[apiType].map((k) =>
+        k.id === keyId ? { ...k, isVisible: !k.isVisible } : k
+      )
+      return { ...prev, [apiType]: updatedKeys }
+    })
   }
 
-  const copyToClipboard = (key) => {
-    navigator.clipboard.writeText(key)
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text)
+      .then(() => alert('Copied to clipboard'))
+      .catch(() => alert('Failed to copy'));
   }
 
-  const deleteKey = (apiType, id) => {
-    setApiKeys((prev) => ({
-      ...prev,
-      [apiType]: prev[apiType].filter((key) => key.id !== id),
-    }))
-    // Optionally send delete request to backend here
+  const deleteKey = async (apiType, keyId) => {
+    try {
+      const res = await fetch('http://localhost:3000/delete-key', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: keyId, apiLevel: 'basic' }),
+      })
+
+      if (!res.ok) throw new Error('Delete failed')
+
+      alert('Key deleted')
+
+      // Remove the key from state
+      setApiKeys((prev) => {
+        const filteredKeys = prev[apiType].filter((k) => k.id !== keyId)
+        return { ...prev, [apiType]: filteredKeys }
+      })
+    } catch {
+      alert('Error deleting key')
+    }
   }
 
   const renderApiSection = (apiType) => {
-    const apiInfo = apiTypes.find((api) => api.name === apiType.name)
     const keys = apiKeys[apiType.name] || []
 
     return (
       <div key={apiType.name} className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm container_core">
         <div className="flex justify-between items-start mb-4">
           <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-1">{apiInfo.title}</h3>
-            <p className="text-sm text-gray-600">{apiInfo.description}</p>
+            <h3 className="text-lg font-semibold text-gray-900 mb-1">{apiType.title}</h3>
+            <p className="text-sm text-gray-600">{apiType.description}</p>
           </div>
           <button
             onClick={() => generateNewKey(apiType.name)}
@@ -118,7 +171,7 @@ const generateNewKey = async (apiType) => {
         </div>
 
         <div className="space-y-3">
-          {keys.map((apiKey) => (
+          {keys.slice(0, 1).map((apiKey) => (
             <div key={apiKey.id} className="bg-gray-50 border border-gray-200 rounded-lg p-4">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-medium text-gray-700">API Key</span>
@@ -128,14 +181,16 @@ const generateNewKey = async (apiType) => {
               </div>
 
               <div className="flex items-center gap-2">
-                <div className="flex-1 bg-white border border-gray-200 rounded px-3 py-2 font-mono text-sm">
-                  {apiKey.isVisible ? apiKey.key : "•".repeat(32)}
-                </div>
+                <input
+                  type={apiKey.isVisible ? 'text' : 'password'}
+                  value={apiKey.key}
+                  readOnly
+                  className="border px-2 py-1 rounded"
+                />
 
                 <button
                   onClick={() => toggleKeyVisibility(apiType.name, apiKey.id)}
                   className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors"
-                  title={apiKey.isVisible ? "Hide key" : "Show key"}
                 >
                   {apiKey.isVisible ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
@@ -143,7 +198,6 @@ const generateNewKey = async (apiType) => {
                 <button
                   onClick={() => copyToClipboard(apiKey.key)}
                   className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors"
-                  title="Copy key"
                 >
                   <Copy size={16} />
                 </button>
@@ -151,7 +205,6 @@ const generateNewKey = async (apiType) => {
                 <button
                   onClick={() => deleteKey(apiType.name, apiKey.id)}
                   className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
-                  title="Delete key"
                 >
                   <Trash2 size={16} />
                 </button>
@@ -236,7 +289,7 @@ const generateNewKey = async (apiType) => {
           <nav className="p-4">
             <ul className="space-y-1">
               {menuItems.map((item) => (
-                <li key={item}>
+                <li key={item.id}>
                   <button
                     onClick={() => setActiveTab(item)}
                     className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
@@ -253,10 +306,34 @@ const generateNewKey = async (apiType) => {
           </nav>
         </aside>
 
-        <main className="main_content_core">{renderContent()}</main>
+        <main className="main_content_core p-6 flex-1">{renderContent()}</main>
       </div>
+
+      {/* Upgrade Modal */}
+      {showUpgradeModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full relative">
+            <button
+              onClick={() => setShowUpgradeModal(false)}
+              className="absolute top-3 right-3 text-gray-500 hover:text-gray-700"
+            >
+              <X size={20} />
+            </button>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">Upgrade Required</h2>
+            <p className="text-gray-600 mb-4">
+              To access this API, please upgrade your plan. Contact support or visit the billing section.
+            </p>
+            <button
+              onClick={() => setShowUpgradeModal(false)}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
 
-export default Core
+export default Core;

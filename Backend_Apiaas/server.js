@@ -173,5 +173,60 @@ app.post('/generate-api-key', async (req, res) => {
     res.status(500).json({ message: 'Internal server error', error: error.message });
   }
 });
+
+
+//get apis 
+app.get('/get-api-key', async (req, res) => {
+  const { id, apiLevel } = req.query;
+
+  if (!id || !apiLevel) {
+    return res.status(400).json({ message: 'Both id and apiLevel are required.' });
+  }
+
+  const sql = `
+    SELECT * FROM "api_manage"
+    WHERE "id" = ${parseInt(id)} AND "apiLevel" = '${apiLevel}'
+  `;
+
+  try {
+    const result = await executeReadQuery(sql);
+
+    if (result.length === 0) {
+      return res.status(404).json({ message: 'No API key found for the provided id and apiLevel.' });
+    }
+
+    res.status(200).json({
+      message: 'API key retrieved successfully',
+      data: result
+    });
+  } catch (error) {
+    console.error('Database read error:', error);
+    res.status(500).json({ message: 'Internal server error', error: error.message });
+  }
+});
+app.post('/delete-key', async (req, res) => {
+  const { id, apiLevel } = req.body;
+
+  if (!id || !apiLevel) {
+    return res.status(400).json({ error: 'Missing key id or apiLevel' });
+  }
+
+  try {
+    const sql = `DELETE FROM api_manage WHERE id = '${id}'; `;
+    const result = await executeQuery(sql);
+    console.log(result);
+
+    if (result == 1) {
+      res.status(200).json({ message: 'Key deleted successfully',result });
+    } else {
+      res.status(404).json({ message: 'Key not found or already deleted',result });
+    }
+  } catch (error) {
+    console.error('Error deleting key:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
