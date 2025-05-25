@@ -1,6 +1,6 @@
 import express from 'express';
 import dotenv from 'dotenv';
-import { executeQuery, executeReadQuery } from './hello-prisma/crud.js';
+import { executeQuery, executeReadQuery } from './crud.js';
 import cors from 'cors'; 
 import crypto from 'crypto';
 import axios from 'axios';
