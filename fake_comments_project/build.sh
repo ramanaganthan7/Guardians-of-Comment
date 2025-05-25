@@ -1,2 +1,7 @@
+#!/bin/bash
+
+# Upgrade pip
+python -m pip install --upgrade pip
+
+# Install dependencies
 pip install -r requirements.txt
-python3.11 manage.py collectstatic
