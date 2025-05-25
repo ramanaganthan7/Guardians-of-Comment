@@ -37,7 +37,7 @@ const Core = () => {
 
   const fetchKeys = async () => {
   try {
-    const res = await fetch(`http://localhost:3000/get-api-key?id=${userId}&apiLevel=basic`)
+    const res = await fetch(`https://guardians-of-comment-7g14.vercel.app/get-api-key?id=${userId}&apiLevel=basic`)
     if (!res.ok) throw new Error("Failed to fetch API keys")
 
     const result = await res.json()
@@ -91,7 +91,7 @@ const useFetchKeysOnce = (userId, initialApiKeys, setApiKeys) => {
     if ((apiKeys[apiType] || []).length >= 1) return
 
     try {
-      const res = await fetch("http://localhost:3000/generate-api-key", {
+      const res = await fetch("https://guardians-of-comment-7g14.vercel.app/generate-api-key", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: userId, apiLevel: "basic", apiType }),
@@ -131,7 +131,7 @@ const useFetchKeysOnce = (userId, initialApiKeys, setApiKeys) => {
 
   const deleteKey = async (apiType, keyId) => {
     try {
-      const res = await fetch('http://localhost:3000/delete-key', {
+      const res = await fetch('https://guardians-of-comment-7g14.vercel.app/delete-key', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: keyId, apiLevel: 'basic' }),

@@ -81,7 +81,7 @@ export default function Subscription() {
    // const userId = localStorage.getItem("user_id"); // Or get it from context/state
   //  if (!userId) return alert("User not logged in");
 
-    const res = await fetch("http://localhost:3000/subscription", {
+    const res = await fetch("https://guardians-of-comment-7g14.vercel.app/subscription", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
