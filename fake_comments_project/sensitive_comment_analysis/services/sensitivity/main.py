@@ -35,12 +35,19 @@ def unified_text_classifier(text):
     else:
         result = classify_english(text)
 
+    # Defensive check
+    if result is None or "label" not in result or "score" not in result:
+        return {
+            "allowed": False
+        }
+
     label = result["label"]
     score = result["score"]
     allowed = is_allowed(label)
     return {
-        "allowed":allowed
+        "allowed": allowed
     }
+
     # return {
     #     "text": text,
     #     "language": "Tanglish" if lang_is_tanglish else "English",
