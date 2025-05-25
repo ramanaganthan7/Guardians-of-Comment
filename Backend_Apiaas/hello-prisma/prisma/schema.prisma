@@ -43,3 +43,9 @@ model api_manage {
   apiKey    String   @unique
   apiLevel  String
 }
+
+model post_details {
+  id          Int    @id @default(autoincrement())
+  postId      Int    @unique
+  sensitivity String
+}

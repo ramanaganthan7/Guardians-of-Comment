@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import { executeQuery, executeReadQuery } from './hello-prisma/crud.js';
 import cors from 'cors'; 
 import crypto from 'crypto';
+import axios from 'axios';
 
 dotenv.config();
 const app = express();
@@ -227,6 +228,54 @@ app.post('/delete-key', async (req, res) => {
   }
 });
 
+//analyse
+app.post('/analyze-comment', async (req, res) => {
+  const { api_key, post_id, comment } = req.body;
 
+  if (!api_key || !post_id || !comment) {
+    return res.status(400).json({ error: "Missing api_key, post_id or comment" });
+  }
+
+  try {
+    // 1. Verify API Key
+    const keyQuery = `SELECT * FROM api_manage WHERE "apiKey" = '${api_key}'`;
+    const keyResult = await executeReadQuery(keyQuery);
+    if (keyResult.length === 0) {
+      return res.status(403).json({ error: "Invalid API Key" });
+    }
+
+    // 2. Get post sensitivity
+    const postQuery = `SELECT * FROM post_details WHERE "postId" = ${post_id}`;
+    const postResult = await executeReadQuery(postQuery);
+    if (postResult.length === 0) {
+      return res.status(404).json({ error: "Post not found" });
+    }
+
+    const sensitivity = postResult[0].sensitivity?.toLowerCase();
+    const payload = { comment };
+
+    // 3. Call Harmful Comment API
+    const harmfulRes = await axios.post('http://127.0.0.1:8000/api/harmful/harmfulcomment/', payload);
+    let allowed = harmfulRes.data.allowed;
+    console.log(allowed,"from harmful");
+
+    // 4. If sensitivity !== 'allowed', call Sensitive Comment API
+    if (sensitivity !== 'allowed') {
+      const sensitiveRes = await axios.post('http://127.0.0.1:8000/api/sensitive/sensitivecomment/', payload);
+      allowed = allowed && sensitiveRes.data.allowed;
+    }
+    let message = "Comment is accepted";
+  if (!allowed) {
+      message = "Comment is not accepted";
+    }
+
+
+    return res.status(200).json({ message});
+
+  } catch (error) {
+    console.error("Analyze Error:", error.message);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
