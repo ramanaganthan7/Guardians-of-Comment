@@ -2,10 +2,12 @@
   "name": "backend_apiaas",
   "version": "1.0.0",
   "description": "",
-  "main": "server.js",
+  "main": "dist/server.js",
   "type": "module",
   "scripts": {
-    "start": "node server.js",
+    "start": "node dist/server.js",
+    "build": "prisma generate && tsc",
+    "prisma:generate": "prisma generate",
     "test": "echo \"Error: no test specified\" && exit 1",
     "queries": "ts-node ./src/queries.ts",
     "caching": "ts-node ./src/caching.ts"
